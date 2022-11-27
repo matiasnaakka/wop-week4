@@ -6,6 +6,4 @@ const httpError = (message, status) => {
     return err;
 };
 
-module.exports = {
-    httpError
-};
+module.exports = {httpError};

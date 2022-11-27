@@ -32,33 +32,50 @@ const getCat = async (catId, next) => {
 
 const addCat = async (data, next) => {
     try {
-        const [rows] = await promisePool.execute(`INSERT INTO wop_cat (name, birthdate, weight, owner, filename) VALUES (?, ?, ?, ?, ?);`, data);
+        const [rows] = await promisePool.execute(`INSERT INTO wop_cat (name, birthdate, weight, owner, filename) VALUES (?, ?, ?, ?, ?);`,
+            data);
         return rows;
     } catch (e) {
         console.error('addCat', e.message);
         next(httpError('Database error', 500));
     }
-}
+};
 
-const updateCat = async (data, next) => {
+const updateCat = async (data, user, next) => {
     try {
-        const [rows] = await promisePool.execute(`UPDATE wop_cat set name = ?, birthdate = ?, weight = ?, owner = ? WHERE cat_id = ?;`, data);
-        return rows;
+        if(user.role === 0){
+            const [rows] = await promisePool.execute(`UPDATE wop_cat SET name = ?, birthdate = ?, weight = ?, owner = ? WHERE cat_id = ?;`,
+                data);
+            return rows;
+        } else {
+            const [rows] = await promisePool.execute(`UPDATE wop_cat SET name = ?, birthdate = ?, weight = ? WHERE cat_id = ? AND owner = ?;`,
+                data);
+            return rows;
+        }
+
     } catch (e) {
         console.error('updateCat', e.message);
         next(httpError('Database error', 500));
     }
-}
+};
 
-const deleteCat = async (catId, next) => {
+const deleteCat = async (catId, user, next) => {
     try {
-        const [rows] = await promisePool.execute(`DELETE FROM wop_cat where cat_id = ?;`, [catId]);
+        let sql = 'DELETE FROM wop_cat where cat_id = ?';
+        const params = [];
+        if (user.role === 0) {
+            params.push(catId);
+        } else {
+            sql += ' AND owner = ?;';
+            params.push(catId, user.user_id);
+        }
+        const [rows] = await promisePool.execute(sql, params);
         return rows;
     } catch (e) {
         console.error('deleteCat', e.message);
         next(httpError('Database error', 500));
     }
-}
+};
 
 module.exports = {
     getAllCats,

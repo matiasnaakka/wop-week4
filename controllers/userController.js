@@ -1,16 +1,35 @@
 'use strict';
 // userController
-const {getUser, getAllUsers, addUser} = require('../models/userModel');
-const {validationResult} = require("express-validator");
+const {getUser, getAllUsers, addUser, deleteUser, updateUser} = require('../models/userModel');
+const {validationResult} = require('express-validator');
 const {httpError} = require('../utils/errors');
 
 const user_list_get = async (req, res, next) => {
-    res.json(await getAllUsers(next));
+    try {
+        const users = await getAllUsers(next);
+        if (users.length < 1) {
+            next(httpError('No users found', 404));
+            return;
+        }
+        res.json(users);
+    } catch (e) {
+        console.error('user_list_get', e.message);
+        next(httpError('Internal server error', 500));
+    }
 };
 
 const user_get = async (req, res, next) => {
-    const user = await getUser(req.params.id, next);
-    res.json(user.pop());
+    try {
+        const user = await getUser(req.params.id, next);
+        if (user.length < 1) {
+            next(httpError('No user found', 404));
+            return;
+        }
+        res.json(user.pop());
+    } catch (e) {
+        console.error('user_get', e.message);
+        next(httpError('Internal server error', 500));
+    }
 };
 
 const user_post = async (req, res, next) => {
@@ -21,10 +40,11 @@ const user_post = async (req, res, next) => {
         if (!errors.isEmpty()) {
             // There are errors.
             // Error messages can be returned in an array using `errors.array()`.
-            console.log('user_post validation', errors.array());
-            next(httpError('invalid data', 400));
+            console.error('user_post validation', errors.array());
+            next(httpError('Invalid data', 400));
             return;
         }
+
         const data = [
             req.body.name,
             req.body.email,
@@ -40,7 +60,6 @@ const user_post = async (req, res, next) => {
         res.json({
             message: 'user added',
             user_id: result.insertId,
-
         });
     } catch (e) {
         console.error('user_post', e.message);
@@ -88,12 +107,21 @@ const user_delete = async (req, res, next) => {
         console.error('user_delete', e.message);
         next(httpError('Internal server error', 500));
     }
-}
+};
+
+const check_token = (req, res, next) => {
+    if (!req.user) {
+        next(httpError('token not valid', 403));
+    } else {
+        res.json({ user: req.user });
+    }
+};
 
 module.exports = {
     user_list_get,
     user_get,
     user_post,
     user_put,
-    user_delete
+    user_delete,
+    check_token,
 };
